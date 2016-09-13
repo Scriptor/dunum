@@ -38,7 +38,7 @@ fn handle_client(stream: &mut TcpStream, f: &mut File) {
 fn init_log() -> File {
     let f = OpenOptions::new()
             .read(true)
-            .write(true)
+            .append(true)
             .create(true)
             .open(LOG_FILE_NAME);
     match f {
