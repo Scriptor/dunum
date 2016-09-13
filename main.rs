@@ -19,13 +19,13 @@ impl fmt::Display for Event {
     }
 }
 
-fn handle_client(stream: &mut TcpStream, f: &mut File) {
+fn handle_client(stream: &mut TcpStream, log: &mut File) {
     let mut buf = [0; 10];
     loop {
         match stream.read(&mut buf) {
             Ok(n) => {
                 if n == 0 { break; }
-                let _ = match f.write(&buf) {
+                let _ = match log.write(&buf) {
                     Ok(n) => stream.write(n.to_string().as_bytes()),
                     Err(_) => stream.write(b"err")
                 };
