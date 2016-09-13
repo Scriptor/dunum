@@ -25,7 +25,10 @@ fn handle_client(stream: &mut TcpStream, f: &mut File) {
         match stream.read(&mut buf) {
             Ok(n) => {
                 if n == 0 { break; }
-                let _ = f.write(&buf);
+                let _ = match f.write(&buf) {
+                    Ok(_) => stream.write(b"ok"),
+                    Err(_) => stream.write(b"err")
+                };
             }
             Err(_) => break
         }
