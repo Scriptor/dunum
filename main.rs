@@ -26,7 +26,7 @@ fn handle_client(stream: &mut TcpStream, f: &mut File) {
             Ok(n) => {
                 if n == 0 { break; }
                 let _ = match f.write(&buf) {
-                    Ok(_) => stream.write(b"ok"),
+                    Ok(n) => stream.write(n.to_string().as_bytes()),
                     Err(_) => stream.write(b"err")
                 };
             }
