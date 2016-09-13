@@ -27,9 +27,7 @@ fn handle_client(stream: &mut TcpStream, f: &mut File) {
                 if n == 0 { break; }
                 let _ = f.write(&buf);
             }
-            Err(_) => {
-                break;
-            }
+            Err(_) => break
         }
     }
 }
@@ -41,11 +39,8 @@ fn init_log() -> File {
             .create(true)
             .open(LOG_FILE_NAME);
     match f {
-        Ok(f) => { f }
-        Err(_) => {
-            panic!("Error: Can't create the log file: {}!",
-                   LOG_FILE_NAME);
-        }
+        Ok(f) => f,
+        Err(_) => panic!("Error: Can't create the log file: {}!", LOG_FILE_NAME),
     }
 }
 
@@ -55,11 +50,8 @@ fn get_log() -> File {
             .write(true)
             .open(LOG_FILE_NAME);
     match f {
-        Ok(f) => { f }
-        Err(_) => { 
-            panic!("Error: Can't open the log file: {}!",
-                   LOG_FILE_NAME);
-        }
+        Ok(f) => f,
+        Err(_) => panic!("Error: Can't open the log file: {}!", LOG_FILE_NAME),
     } 
 }
 
@@ -79,9 +71,8 @@ fn main(){
                     handle_client(&mut s, &mut f)
                 });
             }
-            Err(e) => {
-                println!("ERROR! {:?}", e)
-            }
+            Err(e) => println!("ERROR! {:?}", e)
+           
         }
     }
 
