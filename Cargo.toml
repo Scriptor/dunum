@@ -1,7 +1,0 @@
-[package]
-name = "dunum"
-version = "0.0.1"
-authors = ["Tamreen Khan"]
-
-[dependencies]
-byteorder = "0.5.3"
