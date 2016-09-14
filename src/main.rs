@@ -1,8 +1,12 @@
+extern crate byteorder;
+
 use std::fmt;
 use std::net::{TcpListener, TcpStream};
-use std::io::{Read,Write};
+use std::io::{Cursor,Read,Write};
 use std::fs::{File, OpenOptions};
 use std::thread;
+
+use byteorder::{BigEndian, ReadBytesExt};
 
 const LOG_FILE_NAME:&'static str = "main.log";
 
@@ -20,25 +24,30 @@ impl fmt::Display for Event {
 }
 
 fn handle_client(stream: &mut TcpStream, log: &mut File) {
-    let mut buf = [0; 10];
+    let mut buf = [0; 4];
     loop {
-        match stream.read(&mut buf) {
-            Ok(n) => {
-                if n == 0 { break; }
-                let _ = match log.write(&buf) {
-                    Ok(n) => stream.write(n.to_string().as_bytes()),
-                    Err(_) => stream.write(b"err")
-                };
-            }
-            Err(_) => break
-        }
+        let n = stream.read(&mut buf).unwrap();
+        if n == 0 { break; }
+
+        let mut cursor = Cursor::new(&buf[..]);
+        let num_expected = cursor.read_u32::<BigEndian>().unwrap() as usize;
+        let _ = log.write(num_expected.to_string().as_bytes());
+        println!("Writing {}", num_expected);
+        let mut data = vec![0; num_expected];
+        let _ = stream.read_to_end(&mut data);
+        data.truncate(num_expected);
+
+        let _ = match log.write(data.as_slice()) {
+            Ok(n) => stream.write(n.to_string().as_bytes()),
+            Err(_) => stream.write(b"err")
+        };
     }
 }
 
 fn init_log() -> File {
     let f = OpenOptions::new()
             .read(true)
-            .append(true)
+            .write(true)
             .create(true)
             .open(LOG_FILE_NAME);
     match f {
@@ -50,7 +59,7 @@ fn init_log() -> File {
 fn get_log() -> File {
     let f = OpenOptions::new()
             .read(true)
-            .write(true)
+            .append(true)
             .open(LOG_FILE_NAME);
     match f {
         Ok(f) => f,
