@@ -11,7 +11,7 @@
 int accept_next(int fd) {
     int comm_fd = accept(fd, (struct sockaddr*) NULL, NULL);
     if (comm_fd < 0)
-        error("ERROR: Accepting");
+        perror("Can't accept connection");
     return comm_fd;
 }
 
@@ -23,7 +23,7 @@ int read_next(int fd, char *buf) {
     bzero(exp, 4);
     n = read(fd, exp, 4);
     if (n < 0)
-        error("ERROR: Can't read number of expected bytes.");
+        return n;
     else if (n == 0)
         return 0;
 
@@ -33,8 +33,8 @@ int read_next(int fd, char *buf) {
     
     n = read(fd, buf, num_expected);
     if (n < 0)
-        error("ERROR: Can't read data.");
-    printf("DATA: %s\n", buf);
+        perror("Can't read data");
+    printf("WRITING TO LOG: %s\n", buf);
 
     return n;
 }
@@ -62,12 +62,12 @@ int main() {
     {
         bzero(buf, BUF_SIZE);
         bzero(output, BUF_SIZE);
-        n = read_next(comm_fd, buf);
+        n = process_next(comm_fd, buf);
         if (n > 0) {
             sprintf(output, "%s\n", buf);
             n = write(comm_fd, output, strlen(buf)+1);
             if (n < 0)
-                error("ERROR: Can't write");
+                perror("Can't write to socket");
         } else if(n == 0) {
             close(comm_fd);
             comm_fd = accept_next(listen_fd);
