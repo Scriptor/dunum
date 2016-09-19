@@ -8,9 +8,14 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 const LOG_FILE_NAME:&'static str = "main.log";
 
-fn write_log(f: &mut File, num_bytes: &[u8], data_buf: &[u8]) {
-    f.write_all(num_bytes).unwrap();
-    f.write_all(data_buf).unwrap();
+struct LogEntry<'a> {
+    size: &'a [u8],
+    data: &'a [u8],
+}
+
+fn write_log(f: &mut File, entry: LogEntry) {
+    f.write_all(entry.size).unwrap();
+    f.write_all(entry.data).unwrap();
 }
 
 fn handle_client(stream: &mut TcpStream, log: &mut File) {
@@ -28,7 +33,7 @@ fn handle_client(stream: &mut TcpStream, log: &mut File) {
                     .read_to_end(&mut data_buf).unwrap();
                 match str::from_utf8(&data_buf) {
                     Ok(data) => {
-                        write_log(log, &num_exp_buf, &*data_buf);
+                        write_log(log, LogEntry{size: &num_exp_buf, data: &*data_buf});
                         println!("{:?}", num_exp_buf);
                         println!("{}", data);
                     }
