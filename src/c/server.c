@@ -8,6 +8,15 @@
 #define SERVER_PORT 4242
 #define BUF_SIZE 256
 
+#define LOG_FILE_PATH "log.txt";
+
+FILE *open_log(){
+    FILE *fd = fopen(LOG_FILE_PATH, "a");
+    if(fd == NULL)
+        perror("Can't open log file");
+    return fd;
+}
+
 int accept_next(int fd) {
     int comm_fd = accept(fd, (struct sockaddr*) NULL, NULL);
     if (comm_fd < 0)
@@ -15,7 +24,7 @@ int accept_next(int fd) {
     return comm_fd;
 }
 
-int read_next(int fd, char *buf) {
+int read_next(int fd, FILE *log, char *buf) {
     int i, n;
     char exp[4];
     uint32_t num_expected;
@@ -34,7 +43,6 @@ int read_next(int fd, char *buf) {
     n = read(fd, buf, num_expected);
     if (n < 0)
         perror("Can't read data");
-    printf("WRITING TO LOG: %s\n", buf);
 
     return n;
 }
@@ -42,9 +50,11 @@ int read_next(int fd, char *buf) {
 int main() {
     struct sockaddr_in servaddr;
     int n, listen_fd, comm_fd;
+    FILE *log;
     char buf[BUF_SIZE];
     char output[BUF_SIZE];
 
+    log = open_log();
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     bzero(&servaddr, sizeof(servaddr));
@@ -62,7 +72,8 @@ int main() {
     {
         bzero(buf, BUF_SIZE);
         bzero(output, BUF_SIZE);
-        n = process_next(comm_fd, buf);
+        process_next(comm_fd, log, buf);
+        n = write_log(log, 
         if (n > 0) {
             sprintf(output, "%s\n", buf);
             n = write(comm_fd, output, strlen(buf)+1);
