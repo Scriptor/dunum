@@ -1,8 +1,9 @@
 extern crate byteorder;
 
 use std::str;
+use std::thread;
 use std::net::{TcpListener, TcpStream};
-use std::io::{Read,Write,Cursor};
+use std::io::{Read,Write,BufWriter,Cursor};
 use std::fs::{File, OpenOptions};
 use byteorder::{BigEndian, ReadBytesExt};
 
@@ -13,12 +14,14 @@ struct LogEntry<'a> {
     data: &'a [u8],
 }
 
-fn write_log(f: &mut File, entry: LogEntry) {
-    f.write_all(entry.size).unwrap();
-    f.write_all(entry.data).unwrap();
+fn write_log(f: &File, entry: LogEntry) {
+    let mut writer = BufWriter::new(f);
+    writer.write_all(entry.size).unwrap();
+    writer.write_all(entry.data).unwrap();
+    writer.flush().unwrap();
 }
 
-fn handle_client(stream: &mut TcpStream, log: &mut File) {
+fn handle_client(stream: &mut TcpStream, log: &File) {
     let mut num_exp_buf;
     let mut data_buf = vec![];
     loop {
@@ -48,7 +51,6 @@ fn handle_client(stream: &mut TcpStream, log: &mut File) {
 
 fn init_log() -> File {
     let f = OpenOptions::new()
-            .read(true)
             .append(true)
             .open(LOG_FILE_NAME);
     match f {
@@ -75,8 +77,10 @@ fn main(){
     for s in listener.incoming() {
         match s {
             Ok(mut stream) => {
-                let mut f = get_log();
-                handle_client(&mut stream, &mut f)
+                thread::spawn(move || {
+                    let f = get_log();
+                    handle_client(&mut stream, &f)
+                });
             }
             Err(e) => println!("ERROR! {:?}", e)
         }
