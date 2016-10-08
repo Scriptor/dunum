@@ -34,11 +34,15 @@ fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
         let mut entry_size_buf = [0; 4];
         let entry_size;
         let mut data_buf = Vec::new();
-        log.read_exact(&mut entry_size_buf).unwrap();
-        entry_size = read_u32(entry_size_buf);
-        log.take(entry_size as u64).read_to_end(&mut data_buf).unwrap();
-        if i >= offset {
-            entries.push(String::from_utf8(data_buf).unwrap());
+        match log.read_exact(&mut entry_size_buf) {
+            Ok(_) => {
+                entry_size = read_u32(entry_size_buf);
+                log.take(entry_size as u64).read_to_end(&mut data_buf).unwrap();
+                if i >= offset {
+                    entries.push(String::from_utf8(data_buf).unwrap());
+                }
+            }
+            _ => break
         }
     }
     entries
