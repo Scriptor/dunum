@@ -3,7 +3,7 @@ extern crate byteorder;
 use std::str;
 use std::thread;
 use std::net::{TcpListener, TcpStream};
-use std::io::{Read,Write,BufWriter,Cursor};
+use std::io::{Read,Write,BufWriter,Cursor,Seek,SeekFrom};
 use std::fs::{File, OpenOptions};
 use byteorder::{BigEndian, ReadBytesExt};
 
@@ -28,6 +28,7 @@ fn write_log(f: &File, entry: LogEntry) {
 
 fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
     let mut entries: Vec<String> = Vec::with_capacity(n as usize);
+    log.seek(SeekFrom::Start(0)).unwrap();
     //let offset = 0;
     for i in 0..(offset+n) {
         let mut entry_size_buf = [0; 4];
