@@ -124,7 +124,6 @@ fn init_log() -> File {
 fn get_log_writer() -> File {
     /// Grab a file handle that allows appending to the log file.
     let f = OpenOptions::new()
-            .read(true)
             .append(true)
             .open(LOG_FILE_NAME);
     match f {
