@@ -15,11 +15,16 @@ struct LogEntry<'a> {
 }
 
 fn read_u32(buf: [u8; 4]) -> u32 {
+    /// Takes a 4-byte array and returns a u32.
+    /// Assumes the bytes are in big-endian form.
     let mut rdr = Cursor::new(buf);
     rdr.read_u32::<BigEndian>().unwrap()
 }
 
 fn write_log(f: &File, entry: LogEntry) {
+    /// Writes an instance of LogEntry to the given log file.
+    /// First writes the size in bytes of the payload, then the
+    /// payload itself. Uses a buffered writer to make the write atomic.
     let mut writer = BufWriter::new(f);
     writer.write_all(entry.size).unwrap();
     writer.write_all(entry.data).unwrap();
@@ -27,9 +32,10 @@ fn write_log(f: &File, entry: LogEntry) {
 }
 
 fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
+    /// Reads `n` entries starting at `offset` from the given `log` file,
+    /// returns a vector of strings that represent the given payloads.
     let mut entries: Vec<String> = Vec::with_capacity(n as usize);
     log.seek(SeekFrom::Start(0)).unwrap();
-    //let offset = 0;
     for i in 0..(offset+n) {
         let mut entry_size_buf = [0; 4];
         let entry_size;
@@ -49,6 +55,11 @@ fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
 }
 
 fn handle_writer(stream: &mut TcpStream, log: &File) {
+    /// Reads incoming entries from `stream` and builds LogEntries
+    /// to write to the given `log` file. Writes back onto `stream`
+    /// the number of bytes written.
+    /// Incoming entries are in the format of first the size in bytes
+    /// of the expected payload followed by the payload itself.
     let mut num_exp_buf;
     let mut data_buf = vec![];
     loop {
@@ -69,7 +80,7 @@ fn handle_writer(stream: &mut TcpStream, log: &File) {
                     }
                     _ => panic!("Couldn't convert data to string.")
                 }
-                let _ = stream.write(n.to_string().as_bytes());
+                stream.write(n.to_string().as_bytes()).unwrap();
             }
             _ => break
         }
@@ -77,6 +88,9 @@ fn handle_writer(stream: &mut TcpStream, log: &File) {
 }
 
 fn handle_reader(stream: &mut TcpStream, log: &mut File) {
+    /// Takes incoming read requests from `stream`, fetches
+    /// the requested data from `log`, and writes them back
+    /// on `stream`.
     let mut offset_buf;
     let mut num_entries_buf;
     loop {
@@ -97,6 +111,7 @@ fn handle_reader(stream: &mut TcpStream, log: &mut File) {
 }
 
 fn init_log() -> File {
+    /// Create the log file if it does not exist yet.
     let f = OpenOptions::new()
             .append(true)
             .open(LOG_FILE_NAME);
@@ -107,6 +122,7 @@ fn init_log() -> File {
 }
 
 fn get_log_writer() -> File {
+    /// Grab a file handle that allows appending to the log file.
     let f = OpenOptions::new()
             .read(true)
             .append(true)
@@ -118,6 +134,7 @@ fn get_log_writer() -> File {
 }
 
 fn get_log_reader() -> File {
+    /// Grab a file handle that allows reading from the log file.
     File::open(LOG_FILE_NAME).unwrap()
 }
 
