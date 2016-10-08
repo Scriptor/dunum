@@ -26,17 +26,19 @@ fn write_log(f: &File, entry: LogEntry) {
     writer.flush().unwrap();
 }
 
-fn read_entries(log: &mut File, n: u32)  -> Vec<String> {
+fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
     let mut entries: Vec<String> = Vec::with_capacity(n as usize);
     //let offset = 0;
-    for _ in 0..n {
+    for i in 0..(offset+n) {
         let mut entry_size_buf = [0; 4];
         let entry_size;
         let mut data_buf = Vec::new();
         log.read_exact(&mut entry_size_buf).unwrap();
         entry_size = read_u32(entry_size_buf);
         log.take(entry_size as u64).read_to_end(&mut data_buf).unwrap();
-        entries.push(String::from_utf8(data_buf).unwrap());
+        if i >= offset {
+            entries.push(String::from_utf8(data_buf).unwrap());
+        }
     }
     entries
 }
@@ -70,14 +72,18 @@ fn handle_writer(stream: &mut TcpStream, log: &File) {
 }
 
 fn handle_reader(stream: &mut TcpStream, log: &mut File) {
+    let mut offset_buf;
     let mut num_entries_buf;
     loop {
+        offset_buf = [0; 4];
         num_entries_buf = [0; 4];
-        match stream.read_exact(&mut num_entries_buf) {
+        match stream.read_exact(&mut offset_buf) {
             Ok(_) => {
+                let _ = stream.read_exact(&mut num_entries_buf);
+                let offset = read_u32(offset_buf);
                 let num_entries = read_u32(num_entries_buf);
-                println!("reading {} entries", num_entries);
-                let entries = read_entries(log, num_entries);
+                println!("Reading {} entries at offset {}", num_entries, offset);
+                let entries = read_entries(log, offset, num_entries);
                 let _ = stream.write(entries.join("").as_bytes());
             }
             _ => break
