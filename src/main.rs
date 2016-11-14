@@ -14,26 +14,26 @@ struct LogEntry<'a> {
     data: &'a [u8],
 }
 
+/// Takes a 4-byte array and returns a u32.
+/// Assumes the bytes are in big-endian form.
 fn read_u32(buf: [u8; 4]) -> u32 {
-    /// Takes a 4-byte array and returns a u32.
-    /// Assumes the bytes are in big-endian form.
     let mut rdr = Cursor::new(buf);
     rdr.read_u32::<BigEndian>().unwrap()
 }
 
+/// Writes an instance of LogEntry to the given log file.
+/// First writes the size in bytes of the payload, then the
+/// payload itself. Uses a buffered writer to make the write atomic.
 fn write_log(f: &File, entry: LogEntry) {
-    /// Writes an instance of LogEntry to the given log file.
-    /// First writes the size in bytes of the payload, then the
-    /// payload itself. Uses a buffered writer to make the write atomic.
     let mut writer = BufWriter::new(f);
     writer.write_all(entry.size).unwrap();
     writer.write_all(entry.data).unwrap();
     writer.flush().unwrap();
 }
 
+/// Reads `n` entries starting at `offset` from the given `log` file,
+/// returns a vector of strings that represent the given payloads.
 fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
-    /// Reads `n` entries starting at `offset` from the given `log` file,
-    /// returns a vector of strings that represent the given payloads.
     let mut entries: Vec<String> = Vec::with_capacity(n as usize);
     log.seek(SeekFrom::Start(0)).unwrap();
     for i in 0..(offset+n) {
@@ -54,21 +54,25 @@ fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
     entries
 }
 
+/// Reads incoming entries from `stream` and builds LogEntries
+/// to write to the given `log` file. Writes back onto `stream`
+/// the number of bytes written.
+/// Incoming entries are in the format of first the size in bytes
+/// of the expected payload followed by the payload itself.
 fn handle_writer(stream: &mut TcpStream, log: &File) {
-    /// Reads incoming entries from `stream` and builds LogEntries
-    /// to write to the given `log` file. Writes back onto `stream`
-    /// the number of bytes written.
-    /// Incoming entries are in the format of first the size in bytes
-    /// of the expected payload followed by the payload itself.
-    let mut num_exp_buf;
+    let mut topic_exp_buf;
+    let mut data_exp_buf;
     let mut data_buf = vec![];
     loop {
         num_exp_buf = [0; 4];
         data_buf.truncate(0);
         match stream.read_exact(&mut num_exp_buf) {
             Ok(_) => {
-                let mut rdr = Cursor::new(num_exp_buf);
-                let num_expected = rdr.read_u32::<BigEndian>().unwrap();
+                stream.read_exact(&mut topic_exp_buf).unwrap();
+                let num_expected = read_u32(topic_exp_buf);
+
+                stream.read_exact(&mut num_exp_buf).unwrap();
+                let num_expected = read_u32(num_exp_buf);
 
                 let n = stream.take(num_expected as u64)
                     .read_to_end(&mut data_buf).unwrap();
@@ -87,10 +91,10 @@ fn handle_writer(stream: &mut TcpStream, log: &File) {
     }
 }
 
+/// Takes incoming read requests from `stream`, fetches
+/// the requested data from `log`, and writes them back
+/// on `stream`.
 fn handle_reader(stream: &mut TcpStream, log: &mut File) {
-    /// Takes incoming read requests from `stream`, fetches
-    /// the requested data from `log`, and writes them back
-    /// on `stream`.
     let mut offset_buf;
     let mut num_entries_buf;
     loop {
@@ -110,30 +114,30 @@ fn handle_reader(stream: &mut TcpStream, log: &mut File) {
     }
 }
 
+/// Create the log file if it does not exist yet.
 fn init_log() -> File {
-    /// Create the log file if it does not exist yet.
     let f = OpenOptions::new()
-            .append(true)
-            .open(LOG_FILE_NAME);
+        .append(true)
+        .open(LOG_FILE_NAME);
     match f {
         Ok(f) => f,
         Err(_) => panic!("Error: Can't create the log file: {}!", LOG_FILE_NAME),
     } 
 }
 
+/// Grab a file handle that allows appending to the log file.
 fn get_log_writer() -> File {
-    /// Grab a file handle that allows appending to the log file.
     let f = OpenOptions::new()
-            .append(true)
-            .open(LOG_FILE_NAME);
+        .append(true)
+        .open(LOG_FILE_NAME);
     match f {
         Ok(f) => f,
         Err(_) => panic!("Error: Can't open the log file: {}!", LOG_FILE_NAME),
     } 
 }
 
+/// Grab a file handle that allows reading from the log file.
 fn get_log_reader() -> File {
-    /// Grab a file handle that allows reading from the log file.
     File::open(LOG_FILE_NAME).unwrap()
 }
 
