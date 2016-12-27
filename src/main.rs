@@ -61,25 +61,31 @@ fn read_entries(log: &mut File, offset: u32, n: u32)  -> Vec<String> {
 /// of the expected payload followed by the payload itself.
 fn handle_writer(stream: &mut TcpStream, log: &File) {
     let mut topic_exp_buf;
+    let mut topic_buf = vec![];
     let mut data_exp_buf;
     let mut data_buf = vec![];
     loop {
-        num_exp_buf = [0; 4];
+        topic_exp_buf = [0; 4];
+        data_exp_buf = [0; 4];
+        topic_buf.truncate(0);
         data_buf.truncate(0);
-        match stream.read_exact(&mut num_exp_buf) {
+        match stream.read_exact(&mut topic_exp_buf) {
             Ok(_) => {
-                stream.read_exact(&mut topic_exp_buf).unwrap();
-                let num_expected = read_u32(topic_exp_buf);
+                // Read in topic
+                let topic_exp = read_u32(topic_exp_buf);
 
-                stream.read_exact(&mut num_exp_buf).unwrap();
-                let num_expected = read_u32(num_exp_buf);
+                stream.take(topic_exp as u64).read_to_end(&mut topic_buf).unwrap();
+                println!("topic {:?}", topic_buf);
 
-                let n = stream.take(num_expected as u64)
-                    .read_to_end(&mut data_buf).unwrap();
+                // Read in number of expected data bytes
+                stream.read_exact(&mut data_exp_buf).unwrap();
+                let data_expected = read_u32(data_exp_buf);
+
+                let n = stream.take(data_expected as u64) .read_to_end(&mut data_buf).unwrap();
                 match str::from_utf8(&data_buf) {
                     Ok(data) => {
-                        write_log(log, LogEntry{size: &num_exp_buf, data: &*data_buf});
-                        println!("{:?}", num_exp_buf);
+                        write_log(log, LogEntry{size: &data_exp_buf, data: &*data_buf});
+                        println!("{:?}", data_exp_buf);
                         println!("{}", data);
                     }
                     _ => panic!("Couldn't convert data to string.")
